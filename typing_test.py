@@ -1,31 +1,34 @@
 import random
-from db_manager import DBManager
 
 class TypingTest:
-    def __init__(self, user_id):
-        self.db = DBManager()
-        self.user_id = user_id
-        self.words = ["python", "development", "computer", "programming", "interface", "keyboard", "screen"]
-        self.paragraphs = [
-            "Python is a high-level programming language.", 
-            "It supports multiple programming paradigms."
-        ]
+    easy_words = ["apple", "ball", "cat", "dog", "egg"]
+    medium_words = ["keyboard", "monitor", "computer", "python", "table"]
+    hard_words = ["pneumonia", "conscientious", "psychology", "supercalifragilisticexpialidocious"]
 
-    def start_word_test(self):
-        random.shuffle(self.words)
-        # The game logic for word-based test will go here
-        # For simplicity, let's say the score is calculated
-        score = 5
-        accuracy = 98.5
-        self.update_score(score, accuracy)
+    easy_paragraph = "The cat is on the mat."
+    medium_paragraph = "The quick brown fox jumps over the lazy dog."
+    hard_paragraph = "Supercalifragilisticexpialidocious is a long and tricky word."
 
-    def start_paragraph_test(self):
-        random.shuffle(self.paragraphs)
-        # The game logic for paragraph-based test will go here
-        # For simplicity, let's say the score is calculated
-        score = 10
-        accuracy = 95.2
-        self.update_score(score, accuracy)
+    def get_words(self, difficulty):
+        if difficulty == 1:  # Easy
+            return " ".join(random.choices(self.easy_words, k=5))
+        elif difficulty == 2:  # Medium
+            return " ".join(random.choices(self.medium_words, k=8))
+        elif difficulty == 3:  # Hard
+            return " ".join(random.choices(self.hard_words, k=10))
 
-    def update_score(self, score, accuracy):
-        self.db.update_score(self.user_id, score, accuracy)
+    def get_paragraph(self, difficulty):
+        if difficulty == 1:  # Easy
+            return self.easy_paragraph
+        elif difficulty == 2:  # Medium
+            return self.medium_paragraph
+        elif difficulty == 3:  # Hard
+            return self.hard_paragraph
+
+    def calculate_metrics(self, typed_text, original_text, time_taken):
+        word_count = len(original_text.split())
+        wpm = (word_count / time_taken) * 60
+        correct_chars = sum(1 for i, c in enumerate(typed_text) if i < len(original_text) and c == original_text[i])
+        accuracy = (correct_chars / len(original_text)) * 100
+        score = wpm * (accuracy / 100)
+        return wpm, accuracy, score
