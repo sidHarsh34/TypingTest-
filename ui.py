@@ -1,8 +1,9 @@
 from tkinter import *
 from tkinter import messagebox
 from auth import Auth
-import time
+from typing_test import TypingTest
 import random
+import time
 
 class TypingTestUI:
     def __init__(self):
@@ -93,38 +94,52 @@ class TypingTestUI:
         self.label = Label(self.root, text=f"Welcome, {username}! Select Typing Mode:", font=("Arial", 18, "bold"), bg="#121212", fg="white")
         self.label.pack(pady=20)
 
-        self.test_instruction = Label(self.root, text="Choose a mode to start your test:", font=("Arial", 12), bg="#121212", fg="white")
-        self.test_instruction.pack(pady=10)
-
         self.mode_choice = IntVar(value=1)  # 1 for words, 2 for paragraph
         self.words_radio = Radiobutton(self.root, text="Words", variable=self.mode_choice, value=1, font=("Arial", 12), bg="#121212", fg="white", selectcolor="#121212")
         self.words_radio.pack(pady=5)
         self.paragraph_radio = Radiobutton(self.root, text="Paragraph", variable=self.mode_choice, value=2, font=("Arial", 12), bg="#121212", fg="white", selectcolor="#121212")
         self.paragraph_radio.pack(pady=5)
 
+        self.label_difficulty = Label(self.root, text="Select Difficulty Level:", font=("Arial", 14, "bold"), bg="#121212", fg="white")
+        self.label_difficulty.pack(pady=10)
+
+        self.difficulty_choice = IntVar(value=1)  # 1 for easy, 2 for medium, 3 for hard
+        self.easy_radio = Radiobutton(self.root, text="Easy", variable=self.difficulty_choice, value=1, font=("Arial", 12), bg="#121212", fg="white", selectcolor="#121212")
+        self.easy_radio.pack(pady=5)
+        self.medium_radio = Radiobutton(self.root, text="Medium", variable=self.difficulty_choice, value=2, font=("Arial", 12), bg="#121212", fg="white", selectcolor="#121212")
+        self.medium_radio.pack(pady=5)
+        self.hard_radio = Radiobutton(self.root, text="Hard", variable=self.difficulty_choice, value=3, font=("Arial", 12), bg="#121212", fg="white", selectcolor="#121212")
+        self.hard_radio.pack(pady=5)
+
         self.start_button = Button(self.root, text="Start Test", command=self.start_typing_test, width=20, bg="#28a745", fg="white", font=("Arial", 12, "bold"))
         self.start_button.pack(pady=20)
 
     def start_typing_test(self):
-        """Start the typing test based on the selected mode."""
+        """Start the typing test based on the selected mode and difficulty."""
         mode = self.mode_choice.get()
-        self.clear_ui()
+        difficulty = self.difficulty_choice.get()
 
+        self.clear_ui()
         self.start_time = time.time()  # Start time tracking
 
+        self.test = TypingTest()
         if mode == 1:  # Words mode
-            self.text_to_type = ' '.join(random.choices(self.get_words(), k=10))  # Random 10 words
+            self.text_to_type = self.test.get_words(difficulty)
         else:  # Paragraph mode
-            self.text_to_type = self.get_paragraph()
+            self.text_to_type = self.test.get_paragraph(difficulty)
 
         self.display_text = Label(self.root, text=self.text_to_type, font=("Arial", 14, "italic"), bg="#ffffff", fg="#333", padx=10, pady=10, wraplength=600)
         self.display_text.pack(pady=10)
 
         self.typing_entry = Entry(self.root, width=50, font=("Arial", 12))
         self.typing_entry.pack(pady=10)
+        self.typing_entry.bind("<KeyRelease>", self.check_completion)
 
-        self.submit_button = Button(self.root, text="Submit", command=self.submit_typing_test, width=20, bg="#28a745", fg="white", font=("Arial", 12, "bold"))
-        self.submit_button.pack(pady=20)
+    def check_completion(self, event):
+        """Automatically submit the test when all the text is typed."""
+        typed_text = self.typing_entry.get()
+        if typed_text.strip() == self.text_to_type.strip():
+            self.submit_typing_test()
 
     def submit_typing_test(self):
         """Calculate and display WPM, accuracy, and score after test submission."""
@@ -133,32 +148,25 @@ class TypingTestUI:
 
         if typed_text:
             time_taken = end_time - self.start_time
-            wpm, accuracy, score = self.calculate_metrics(typed_text, self.text_to_type, time_taken)
-            messagebox.showinfo("Test Results", f"WPM: {wpm}\nAccuracy: {accuracy}%\nScore: {score}")
-            self.auth.db.update_score(self.auth.user_id, score, accuracy)  # Update database
+            wpm, accuracy, score = self.test.calculate_metrics(typed_text, self.text_to_type, time_taken)
+            self.show_result_page(wpm, accuracy, score)
         else:
             messagebox.showerror("Error", "Please type the text before submitting.")
 
-    def calculate_metrics(self, typed_text, original_text, time_taken):
-        """Calculate WPM, accuracy, and score."""
-        word_count = len(original_text.split())
-        wpm = round((word_count / time_taken) * 60)
+    def show_result_page(self, wpm, accuracy, score):
+        """Show the result on a separate page with better styling."""
+        self.clear_ui()
 
-        # Calculate accuracy
-        typed_words = typed_text.split()
-        original_words = original_text.split()
-        correct_words = sum(1 for tw, ow in zip(typed_words, original_words) if tw == ow)
-        accuracy = round((correct_words / len(original_words)) * 100, 2)
+        self.result_label = Label(self.root, text="Typing Test Results", font=("Arial", 24, "bold"), bg="#121212", fg="white")
+        self.result_label.pack(pady=20)
 
-        # Calculate score (a basic formula combining accuracy and wpm)
-        score = round(accuracy * wpm / 100)
+        result_text = f"""
+        Words Per Minute (WPM): {wpm:.2f}
+        Accuracy: {accuracy:.2f}%
+        Final Score: {score:.2f}
+        """
+        self.result_display = Label(self.root, text=result_text, font=("Arial", 16), bg="#121212", fg="white")
+        self.result_display.pack(pady=10)
 
-        return wpm, accuracy, score
-
-    def get_words(self):
-        """Get a list of random words."""
-        return ["apple", "banana", "cherry", "dog", "elephant", "fox", "grape", "hat", "ice", "jelly"]
-
-    def get_paragraph(self):
-        """Get a random paragraph."""
-        return "The quick brown fox jumps over the lazy dog. This is a common sentence used to test typing speed and accuracy."
+        self.restart_button = Button(self.root, text="Try Again", command=self.show_typing_test, width=20, bg="#007acc", fg="white", font=("Arial", 12, "bold"))
+        self.restart_button.pack(pady=20)
